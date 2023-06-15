@@ -77,9 +77,11 @@ class MoveStructure {
         uint64_t original_r;
         uint64_t end_bwt_idx;
         uint64_t end_bwt_idx_thresholds[4];
+        uint64_t end_bwt_idx_next_up[4];
+        uint64_t end_bwt_idx_next_down[4];
         bool verbose;
         bool logs;
-	char* input_file;
+	    char* input_file;
 
         // Map from 2bit encoded character to the actual character
         // Example: alphabet[0] -> A, alphabet[1] -> C

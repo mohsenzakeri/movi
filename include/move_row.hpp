@@ -57,6 +57,8 @@ class MoveRow{
         uint16_t thresholds[3];
         uint32_t id; // bwt run after the jump
 
+        uint16_t next_up[3];
+        uint16_t next_down[3];
 };
 
 /* inline uint64_t MoveRow::get_p() const{

@@ -77,7 +77,7 @@ void MoveRow::set_id(uint64_t id_) {
 
 void MoveRow::set_c(char c_, std::vector<uint64_t>& alphamap) {
     uint64_t c_64 = static_cast<uint64_t>(alphamap[c_]);
-    uint64_t c_16 = static_cast<uint16_t>(alphamap[c_]);
+    // uint64_t c_16 = static_cast<uint16_t>(alphamap[c_]);
     overflow_bits = overflow_bits & mask_c;
     overflow_bits = overflow_bits | ((c_64) << 8);
 }

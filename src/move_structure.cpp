@@ -641,8 +641,48 @@ void MoveStructure::build(std::ifstream &bwt_file) {
         }
     }
     std::cerr<< length << "\n";
-    // std::cerr<<"Computing the next ups and downs.\n";
+    std::cerr<<"Computing the next ups and downs.\n";
+    compute_nexts();
     std::cerr<< "The move structure building is done.\n";
+}
+
+void MoveStructure::compute_nexts() {
+    for (uint64_t i = rlbwt.size() - 1; i > 0; --i) {
+        if (i % 100000 == 0)
+            std::cerr<< i << "\r";
+
+        char rlbwt_c = bit1 ? compute_char(i) : alphabet[rlbwt[i].get_c()];
+        for (uint64_t j = 0; j < alphabet.size(); j++) {
+            if (i == end_bwt_idx) {
+                auto idx = jump_up(i, alphabet[j]);
+                end_bwt_idx_next_up[j] = (idx == r) ? std::numeric_limits<uint16_t>::max() : i - idx;
+                idx = jump_down(i, alphabet[j]);
+                end_bwt_idx_next_down[j] = (idx == r) ? std::numeric_limits<uint16_t>::max() : idx - i;
+                continue;
+            }
+            if (alphabet[j] != rlbwt_c) {
+                auto alphabet_idx = alphamap_3[alphamap[rlbwt_c]][j];
+                auto idx = jump_up(i, alphabet[j]);
+                if (idx == r) {
+                    rlbwt[i].next_up[alphabet_idx] = std::numeric_limits<uint16_t>::max();
+                } else {
+                    if (i - idx > std::numeric_limits<uint16_t>::max())
+                        std::cerr << "Warning - jump up " << i - idx << " does not fit in 16 bits.\n"; 
+                    rlbwt[i].next_up[alphabet_idx] = i - idx;
+                }
+
+                idx = jump_down(i, alphabet[j]);
+                if (idx == r) {
+                    rlbwt[i].next_down[alphabet_idx] = std::numeric_limits<uint16_t>::max();
+                } else {
+                    if (idx - i > std::numeric_limits<uint16_t>::max())
+                        std::cerr << "Warning - jump down " << idx - i << " does not fit in 16 bits.\n";
+                    rlbwt[i].next_down[alphabet_idx] = idx - i;
+                }
+            }
+        }
+    }
+    std::cerr<< length << "\n";
 }
 
 /*uint64_t MoveStructure::fast_forward(uint64_t pointer, uint64_t idx) {
@@ -867,10 +907,18 @@ bool MoveStructure::jump_thresholds(uint64_t& idx, uint64_t offset, char r_char)
                                    << "\n\t \t \t idx: " << idx << " end_bwt_idx: " << end_bwt_idx << "\n";
             // if (pointer >= rlbwt[idx].get_p() + end_bwt_idx_thresholds[alphabet_index]) { // and idx != r-1) {
             if (offset >= end_bwt_idx_thresholds[alphabet_index]) { // and idx != r-1) {    
-                idx = jump_down(saved_idx, r_char);
+                // idx = jump_down(saved_idx, r_char);
+                if (end_bwt_idx_next_down[alphabet_index] == std::numeric_limits<uint16_t>::max())
+                    idx = r;
+                else
+                    idx = saved_idx + end_bwt_idx_next_down[alphabet_index];
                 return false;
             } else {
-                idx = jump_up(saved_idx, r_char);
+                // idx = jump_up(saved_idx, r_char);
+                if (end_bwt_idx_next_up[alphabet_index] == std::numeric_limits<uint16_t>::max())
+                    idx = r;
+                else
+                    idx = saved_idx - end_bwt_idx_next_up[alphabet_index];                
                 return true;
             }
         }
@@ -884,12 +932,19 @@ bool MoveStructure::jump_thresholds(uint64_t& idx, uint64_t offset, char r_char)
         if (offset >= get_thresholds(idx, alphabet_index)) {
             if (verbose)
                 std::cerr<< "\t \t \t Jumping down with thresholds:\n";
-            idx = jump_down(saved_idx, r_char);
+            if (rlbwt[saved_idx].next_down[alphabet_index] == std::numeric_limits<uint16_t>::max())
+                idx = r;
+            else
+                idx = saved_idx + rlbwt[saved_idx].next_down[alphabet_index];
             return false;
         } else {
             if (verbose)
                 std::cerr<< "\t \t \t Jumping up with thresholds:\n";
-            idx = jump_up(saved_idx, r_char);
+            // idx = jump_up(saved_idx, r_char);
+            if (rlbwt[saved_idx].next_up[alphabet_index] == std::numeric_limits<uint16_t>::max())
+                idx = r;
+            else
+                idx = saved_idx - rlbwt[idx].next_up[alphabet_index];         
             return true;
         }
     } else {
@@ -998,6 +1053,8 @@ void MoveStructure::serialize(char* output_dir) {
     fout.write(reinterpret_cast<char*>(&r), sizeof(r));
     fout.write(reinterpret_cast<char*>(&end_bwt_idx), sizeof(end_bwt_idx));
     fout.write(reinterpret_cast<char*>(&end_bwt_idx_thresholds[0]), 4*sizeof(end_bwt_idx_thresholds[0]));
+    fout.write(reinterpret_cast<char*>(&end_bwt_idx_next_down[0]), 4*sizeof(end_bwt_idx_next_down[0]));
+    fout.write(reinterpret_cast<char*>(&end_bwt_idx_next_up[0]), 4*sizeof(end_bwt_idx_next_up[0]));
 
     uint64_t alphamap_size = alphamap.size();
     fout.write(reinterpret_cast<char*>(&alphamap_size), sizeof(alphamap_size));
@@ -1058,6 +1115,8 @@ void MoveStructure::deserialize(char* index_dir) {
     fin.read(reinterpret_cast<char*>(&r), sizeof(r));
     fin.read(reinterpret_cast<char*>(&end_bwt_idx), sizeof(end_bwt_idx));
     fin.read(reinterpret_cast<char*>(&end_bwt_idx_thresholds[0]), 4*sizeof(end_bwt_idx_thresholds[0]));
+    fin.read(reinterpret_cast<char*>(&end_bwt_idx_next_down[0]), 4*sizeof(end_bwt_idx_next_down[0]));
+    fin.read(reinterpret_cast<char*>(&end_bwt_idx_next_up[0]), 4*sizeof(end_bwt_idx_next_up[0]));
 
     std::cerr<< "length: " << length << " r: " << r << " end_bwt_idx: " << end_bwt_idx << "\n";
 
