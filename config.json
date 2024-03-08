@@ -1,0 +1,9 @@
+{
+  "pfp" : "<PATH TO PFP_THRESHOLDS BINARY>",
+  "prepare_ref": "<PATH TO PREPARE_REF BINARY>",
+  "movi_default": "<PATH TO MOVI-DEFAULT BINARY>",
+  "movi_constant": "<PATH TO MOVI-CONSTANT BINARY>",
+  "bconstructor": "<PATH TO BUILD_CONSTRUCTOR BINARY>",
+  "rconstructor": "<PATH TO RUN_CONSTRUCTOR BINARY>",
+  "time": "/usr/bin/time"
+}
