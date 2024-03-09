@@ -1,3 +1,12 @@
+config='config.json'
+if [[ $# -eq 1 ]]; then
+  config=$1
+fi
+
+#pfp=$(jq -r '.pfp' $1)
+#echo $pfp
+#exit
+
 pfp="<PATH TO PFP_THRESHOLDS BINARY>"
 
 prepare_ref="<PATH TO PREPARE_REF BINARY>"
